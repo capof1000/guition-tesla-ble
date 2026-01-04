@@ -1,0 +1,432 @@
+substitutions:
+  friendly_name: Capof Gateway
+  device_name: "guition-esp32-s3-4848s040"
+
+# --- SCRIPTS ---
+script:
+  - id: update_vehicle_image
+    then:
+      - lvgl.image.update:
+          id: vehicle_image_widget
+          src: !lambda |-
+            if (id(charging_state).state == "Charging") return img_charging;
+            if (id(is_charge_flap_open).state) return img_plugged;
+            return img_unplugged;
+
+  - id: screen_timeout_timer
+    mode: restart
+    then:
+      - light.turn_on: 
+          id: display_backlight
+          brightness: !lambda "return id(screen_brightness_config).state / 100.0;"
+      - delay: !lambda "return id(screen_timeout_config).state * 1000;"
+      - light.turn_off: 
+          id: display_backlight
+          transition_length: 2s
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  compile_process_limit: 2
+  libraries:
+    - TeslaBLE=https://github.com/PedroKTFC/tesla-ble.git
+  on_boot:
+    priority: -10
+    then:
+      - script.execute: screen_timeout_timer
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_BT_CTRL_DFT_TX_PWR_LEVEL_P9: "y"
+      CONFIG_ESP32_WIFI_SW_COEXIST_ENABLE: "y"
+      CONFIG_BT_CTRL_DFT_TXOP: "10" 
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 3600s 
+  power_save_mode: LIGHT
+  fast_connect: true
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1200ms
+    window: 1000ms
+    active: false 
+
+logger:
+  level: INFO 
+
+external_components:
+  - source: github://PedroKTFC/esphome-tesla-ble
+
+packages:
+  base: github://PedroKTFC/esphome-tesla-ble/packages/base.yml
+  common: github://PedroKTFC/esphome-tesla-ble/packages/common.yml
+  project: github://PedroKTFC/esphome-tesla-ble/packages/project.yml
+  client: github://PedroKTFC/esphome-tesla-ble/packages/client.yml
+
+tesla_ble_vehicle:
+  id: tesla_ble_vehicle_id
+  vin: !secret tesla_vin
+  tpms_pressure_fl: { disabled_by_default: true }
+  tpms_pressure_fr: { disabled_by_default: true }
+  tpms_pressure_rl: { disabled_by_default: true }
+  tpms_pressure_rr: { disabled_by_default: true }
+  charge_state:
+    id: tesla_soc
+  is_charge_flap_open:
+    id: is_charge_flap_open
+  charging_state:
+    id: charging_state
+    on_value:
+      then:
+        - script.execute: update_vehicle_image
+  max_soc:
+    id: max_soc
+    on_value:
+      then:
+        - if:
+            condition: { lambda: 'return !isnan(x);' }
+            then:
+              - lvgl.arc.update:
+                  id: charge_limit_arc
+                  value: !lambda "return x;"
+              - lvgl.label.update:
+                  id: charge_limit_label
+                  text: !lambda 'static char buf[20]; sprintf(buf, "Limit: %.0f%%", x); return buf;'
+
+binary_sensor:
+  - platform: template
+    id: ble_status_monitor
+    lambda: 'return id(esphome_tesla_ble_status).state;'
+    on_state:
+      then:
+        - lvgl.image.update:
+            id: ble_icon_widget
+            src: !lambda 'return x ? img_ble_full : img_ble_none;'
+
+sensor:
+  - platform: wifi_signal
+    id: wifi_rssi
+    update_interval: 60s 
+    on_value:
+      then:
+        - lvgl.image.update:
+            id: wifi_icon_widget
+            src: !lambda "return (isnan(x) || x < -90) ? img_wifi_none : img_wifi_full;"
+  
+  - platform: template
+    id: ui_soc_monitor
+    lambda: "return id(tesla_soc).state;"
+    update_interval: 30s 
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: charge_level_label
+            text: !lambda 'static char buf[10]; sprintf(buf, "%.0f %%", x); return buf;'
+        - lvgl.arc.update:
+            id: charge_level_arc
+            value: !lambda "return x;"
+
+image:
+  - file: "images/charger_unplugged.jpg"
+    id: img_unplugged
+    type: RGB565
+  - file: "images/charger_plugged.jpg"
+    id: img_plugged
+    type: RGB565  
+  - file: "images/charger_charging.jpg"
+    id: img_charging
+    type: RGB565
+  - file: "images/parametres.jpg"
+    id: img_params
+    type: RGB565
+  - file: "images/wifi/pas-de-wifi.jpg"
+    id: img_wifi_none
+    type: RGB565
+  - file: "images/wifi/signal-wi-fi-75-100.jpg"
+    id: img_wifi_full
+    type: RGB565
+  - file: "images/bluetouth/pas-de-bluetouth.jpg"
+    id: img_ble_none
+    type: RGB565
+  - file: "images/bluetouth/bluetouth-75-100.jpg"
+    id: img_ble_full
+    type: RGB565
+
+number:
+  - platform: template
+    name: "Screen GTW backlight"
+    id: screen_brightness_config
+    unit_of_measurement: "%"
+    min_value: 55
+    max_value: 100
+    step: 1
+    initial_value: 80
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      then:
+        - light.control: 
+            id: display_backlight
+            brightness: !lambda "return x / 100.0;"
+
+  - platform: template
+    name: "Screen GTW delay"
+    id: screen_timeout_config
+    unit_of_measurement: "s"
+    min_value: 15
+    max_value: 3600
+    step: 1
+    initial_value: 60
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: delay_value_label
+            text: !lambda 'static char buf[20]; sprintf(buf, "%.0f s", x); return buf;'
+        - script.execute: screen_timeout_timer
+
+output:
+  - platform: ledc
+    id: backlight_output
+    pin: GPIO38
+
+light:
+  - platform: monochromatic
+    id: display_backlight
+    output: backlight_output
+
+spi:
+  - id: lcd_spi
+    clk_pin: GPIO48
+    mosi_pin: GPIO47
+
+i2c:
+  id: touchscreen_bus
+  sda: GPIO19
+  scl: { number: 45, ignore_strapping_warning: true }
+
+display:
+  - platform: st7701s
+    id: tft_display
+    dimensions: { width: 480, height: 480 }
+    spi_mode: MODE3
+    data_rate: 2MHz
+    color_order: RGB
+    invert_colors: False
+    cs_pin: 39
+    de_pin: 18
+    hsync_pin: 16
+    vsync_pin: 17
+    pclk_pin: 21
+    pclk_frequency: 12MHz
+    update_interval: never 
+    auto_clear_enabled: False
+    init_sequence:
+      - 1
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xCD, 0x00]
+    data_pins:
+      red: [11, 12, 13, 14, 0]
+      green: [8, 20, 3, 46, 9, 10]
+      blue: [4, 5, 6, 7, 15]
+
+touchscreen:
+  - platform: gt911
+    id: tft_touch
+    display: tft_display
+    on_touch:
+      - script.execute: screen_timeout_timer
+
+font:
+  - file: { type: gfonts, family: Roboto }
+    id: font_main
+    size: 24
+    glyphs: ' !"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèàçêëîïôûù'
+
+lvgl:
+  displays: tft_display
+  buffer_size: 10%
+  pages:
+    - id: main_page
+      widgets:
+        - image:
+            id: vehicle_image_widget
+            src: img_unplugged
+            align: CENTER
+            zoom: 0.75
+        
+        # ARC 1 : LE RAIL (GRIS) - Le fond qui va jusqu'à 100%
+        - arc:
+            align: CENTER
+            width: 320
+            height: 320
+            start_angle: 150
+            end_angle: 30
+            arc_width: 12
+            arc_color: 0x333333 # Gris foncé pour le rail
+            bg_opa: 0%
+            value: 100
+            adjustable: false
+
+        # ARC 2 : LIMITE DE CHARGE (BLEU) - Entre SOC et Limite
+        - arc:
+            id: charge_limit_arc
+            align: CENTER
+            width: 320
+            height: 320
+            start_angle: 150
+            end_angle: 30
+            arc_width: 12
+            arc_color: 0x000000 # On cache le rail propre de LVGL
+            bg_opa: 0%
+            indicator: 
+              line_color: 0x00AEEF # Bleu
+              line_width: 12
+            min_value: 0
+            max_value: 100
+            adjustable: true
+            value: !lambda "return (id(max_soc).has_state()) ? id(max_soc).state : 80;"
+            on_value:
+              then:
+                - if:
+                    condition: { lambda: 'return id(tft_touch).get_touches().size() > 0 && x >= 50;' }
+                    then:
+                      - number.set: { id: charging_limit, value: !lambda "return x;" }
+
+        # ARC 3 : NIVEAU ACTUEL (VERT) - Jusqu'au SOC actuel
+        - arc:
+            id: charge_level_arc
+            align: CENTER
+            width: 320
+            height: 320
+            start_angle: 150
+            end_angle: 30
+            arc_width: 12
+            arc_color: 0x000000 # On cache le rail
+            bg_opa: 0% 
+            indicator: 
+              line_color: 0x2ECC71 # Vert
+              line_width: 12
+            min_value: 0
+            max_value: 100
+            value: !lambda "return id(tesla_soc).state;"
+            adjustable: false
+
+        - label:
+            id: charge_level_label
+            align: CENTER
+            y: 140
+            text: "-- %"
+            text_font: font_main
+        - label:
+            id: charge_limit_label
+            align: CENTER
+            y: 175
+            text: "Limit: --%"
+            text_font: font_main
+            text_color: 0x888888
+
+        # BARRE DE STATUS (Header)
+        - obj:
+            height: 60
+            width: 100%
+            align: TOP_MID
+            bg_opa: 0%
+            border_width: 0
+            widgets:
+              - button:
+                  width: 60
+                  height: 50
+                  align: LEFT_MID
+                  x: 10
+                  bg_opa: 0%
+                  on_click: 
+                    then:
+                      - lvgl.slider.update: { id: bright_slider, value: !lambda "return id(screen_brightness_config).state;" }
+                      - lvgl.slider.update: { id: delay_slider, value: !lambda "return id(screen_timeout_config).state;" }
+                      - lvgl.page.show: settings_page
+                  widgets: 
+                    - image: { src: img_params, align: CENTER }
+              - image: 
+                  id: wifi_icon_widget
+                  src: img_wifi_none
+                  align: RIGHT_MID
+                  x: -15
+              - image: 
+                  id: ble_icon_widget
+                  src: img_ble_none
+                  align: RIGHT_MID
+                  x: -90
+
+    - id: settings_page
+      widgets:
+        - obj:
+            width: 100%
+            height: 100%
+            bg_color: 0x1A1A1A
+            widgets:
+              - button:
+                  align: TOP_RIGHT
+                  x: -15
+                  y: 10
+                  width: 50
+                  height: 40
+                  bg_color: 0xE53935
+                  on_click: { then: [ lvgl.page.show: main_page ] }
+                  widgets: [ label: { text: "X", text_font: font_main, align: CENTER } ]
+              - label: { text: "Luminosité", align: TOP_LEFT, x: 30, y: 60, text_color: 0xFFFFFF, text_font: font_main }
+              - slider:
+                  id: bright_slider
+                  align: TOP_MID
+                  y: 100
+                  width: 80%
+                  min_value: 55
+                  max_value: 100
+                  value: !lambda "return id(screen_brightness_config).state;"
+                  on_value:
+                    then:
+                      - number.set: { id: screen_brightness_config, value: !lambda "return x;" }
+              - label: { text: "Extinction (Délai)", align: TOP_LEFT, x: 30, y: 180, text_color: 0xFFFFFF, text_font: font_main }
+              - label:
+                  id: delay_value_label
+                  align: TOP_RIGHT
+                  x: -30
+                  y: 180
+                  text: "60 s"
+                  text_color: 0x00AEEF
+                  text_font: font_main
+              - slider:
+                  id: delay_slider
+                  align: TOP_MID
+                  y: 220
+                  width: 80%
+                  min_value: 15
+                  max_value: 3600
+                  value: !lambda "return id(screen_timeout_config).state;"
+                  on_value:
+                    then:
+                      - number.set: { id: screen_timeout_config, value: !lambda "return x;" }
