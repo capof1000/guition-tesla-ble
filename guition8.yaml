@@ -1,6 +1,8 @@
 #intensite ok snas design
 # arc vert
 
+# arc vert
+
 substitutions:
   friendly_name: Capof Gateway
   device_name: "guition-esp32-s3-4848s040"
@@ -19,6 +21,7 @@ script:
   - id: screen_timeout_timer
     mode: restart
     then:
+      - lvgl.resume
       - light.turn_on: 
           id: display_backlight
           brightness: !lambda "return id(screen_brightness_config).state / 100.0;"
@@ -26,6 +29,9 @@ script:
       - light.turn_off: 
           id: display_backlight
           transition_length: 2s
+      - lvgl.pause
+
+debug:
 
 esphome:
   name: ${device_name}
@@ -35,7 +41,7 @@ esphome:
   libraries:
     - TeslaBLE=https://github.com/PedroKTFC/tesla-ble.git
   on_boot:
-    priority: -100
+    priority: 200
     then:
       - script.execute: screen_timeout_timer
 
@@ -49,6 +55,8 @@ esp32:
       CONFIG_BT_CTRL_DFT_TX_PWR_LEVEL_P9: "y"
       CONFIG_ESP32_WIFI_SW_COEXIST_ENABLE: "y"
       CONFIG_BT_CTRL_DFT_TXOP: "10" 
+      CONFIG_BT_NIMBLE_ROLE_CENTRAL: "y"
+      CONFIG_BT_NIMBLE_MAX_CONNECTIONS: "1"
 
 psram:
   mode: octal
@@ -71,8 +79,8 @@ time:
 
 esp32_ble_tracker:
   scan_parameters:
-    interval: 1200ms
-    window: 1000ms
+    interval: 1500ms
+    window: 250ms
     active: false 
 
 logger:
@@ -164,6 +172,19 @@ sensor:
         - lvgl.label.update:
             id: current_amps_label
             text: !lambda 'static char buf[10]; sprintf(buf, "%.0f A", x); return buf;'
+        - lvgl.slider.update:
+            id: amps_slider
+            value: !lambda "return x;"
+
+  # --- Sensors Debug ---
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+    update_interval: 60s
+  - platform: debug
+    free:
+      name: "${friendly_name} Free Heap"
+    loop_time:
+      name: "${friendly_name} Loop Time"
 
 image:
   - file: "images/charger_unplugged.jpg"
@@ -359,51 +380,39 @@ lvgl:
             text: "-- %"
             text_font: font_main
         
-        # --- Gestion Intensité (Ampères) ---
-        - obj:
-            width: 200
-            height: 60
-            align: CENTER
-            y: 50
-            bg_opa: 0%
-            border_width: 0
-            widgets:
-              - button:
-                  id: btn_minus_amps
-                  width: 50
-                  height: 50
-                  align: LEFT_MID
-                  on_click:
+        # --- Slider Intensité (Ampères) à DROITE ---
+        - slider:
+            id: amps_slider
+            width: 25
+            height: 250
+            align: RIGHT_MID
+            x: -20
+            min_value: 5
+            max_value: 32
+            value: !lambda "return id(tesla_charge_current).state;"
+            bg_color: 0x2A2A2A
+            indicator:
+              bg_color: 0x2ECC71
+            knob:
+              bg_color: 0xFFFFFF
+              radius: 12
+            on_value:
+              then:
+                - if:
+                    condition: { lambda: 'return id(tft_touch).get_touches().size() > 0;' }
                     then:
                       - lambda: |-
-                          float val = id(tesla_charge_current).state;
-                          if (val > 5) {
-                            auto call = id(charging_amps).make_call();
-                            call.set_value(val - 1);
-                            call.perform();
-                          }
-                  widgets: [ label: { text: "-", align: CENTER, text_font: font_large } ]
-              - label:
-                  id: current_amps_label
-                  align: CENTER
-                  text: "-- A"
-                  text_font: font_large
-                  text_color: 0xFFFFFF
-              - button:
-                  id: btn_plus_amps
-                  width: 50
-                  height: 50
-                  align: RIGHT_MID
-                  on_click:
-                    then:
-                      - lambda: |-
-                          float val = id(tesla_charge_current).state;
-                          if (val < 32) {
-                            auto call = id(charging_amps).make_call();
-                            call.set_value(val + 1);
-                            call.perform();
-                          }
-                  widgets: [ label: { text: "+", align: CENTER, text_font: font_large } ]
+                          auto call = id(charging_amps).make_call();
+                          call.set_value(x);
+                          call.perform();
+        - label:
+            id: current_amps_label
+            align: RIGHT_MID
+            x: -15
+            y: 145
+            text: "-- A"
+            text_font: font_main
+            text_color: 0x2ECC71
 
         - label:
             id: charge_limit_label
@@ -465,6 +474,7 @@ lvgl:
                   align: TOP_MID
                   y: 100
                   width: 80%
+                  height: 10
                   min_value: 55
                   max_value: 100
                   value: !lambda "return id(screen_brightness_config).state;"
@@ -485,6 +495,7 @@ lvgl:
                   align: TOP_MID
                   y: 220
                   width: 80%
+                  height: 10
                   min_value: 15
                   max_value: 3600
                   value: !lambda "return id(screen_timeout_config).state;"
