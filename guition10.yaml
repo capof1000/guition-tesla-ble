@@ -3,15 +3,23 @@
 #Mappage des IDs : J'ai relié les capteurs internes de Pedro (battery_level, charge_current, etc.) à vos IDs locaux (tesla_soc, charging_state) pour que vos jauges et images fonctionnent sans modification.
 #Correction du Slider : J'ai simplifié le dégradé du slider pour assurer la compilation.
 #Restauration des réglages : Le logger_level et les paramètres d'écran sont préservés.
+
+#slider avec degrade mais semble non fonctionnel# 
+# arc vert
+# arc vert
+
+# arc vert
+
 substitutions:
   friendly_name: Capof Gateway 10
   device_name: "guition-esp32-s3-4848s040"
   tesla_vin: !secret tesla_vin
-  # Substitutions pour piloter le code de Pedro
+  # Substitutions pour piloter le code de Pedro (Dernière version)
   update_interval: 30s
   poll_charging_period: 30s
   poll_data_period: 60s
   poll_asleep_period: 0s
+  ble_presence_timeout: 30s
 
 # --- SCRIPTS ---
 script:
@@ -86,22 +94,21 @@ api:
 logger:
   level: INFO 
 
-# --- PACKAGES PEDRO ---
+# --- PACKAGES PEDRO (DERNIERE VERSION) ---
 external_components:
   - source: github://PedroKTFC/esphome-tesla-ble
     refresh: 1h
 
 packages:
-  base: github://PedroKTFC/esphome-tesla-ble/packages/base.yml@v2024.11.1
-  common: github://PedroKTFC/esphome-tesla-ble/packages/common.yml@v2024.11.1
-  project: github://PedroKTFC/esphome-tesla-ble/packages/project.yml@v2024.11.1
-  client: github://PedroKTFC/esphome-tesla-ble/packages/client.yml@v2024.11.1
+  base: github://PedroKTFC/esphome-tesla-ble/packages/base.yml
+  common: github://PedroKTFC/esphome-tesla-ble/packages/common.yml
+  project: github://PedroKTFC/esphome-tesla-ble/packages/project.yml
+  client: github://PedroKTFC/esphome-tesla-ble/packages/client.yml
 
-# --- CONFIGURATION VÉHICULE (Simplifiée) ---
+# --- CONFIGURATION VÉHICULE ---
 tesla_ble_vehicle:
   id: tesla_ble_vehicle_id
   vin: ${tesla_vin}
-  # Mappage des IDs de Pedro vers vos IDs LVGL
   charge_state: { id: tesla_soc }
   charge_current: { id: tesla_amps_raw }
   is_charge_flap_open: { id: is_charge_flap_open }
@@ -122,10 +129,11 @@ tesla_ble_vehicle:
                   id: charge_limit_label
                   text: !lambda 'static char buf[20]; sprintf(buf, "Limit: %.0f%%", x); return buf;'
 
-# --- SENSORS & UI BRIDGING ---
+# --- SENSORS & BRIDGE ---
 binary_sensor:
   - platform: template
     id: ble_status_monitor
+    # Correction : Utilisation de l'ID statique défini dans les packages de Pedro
     lambda: 'return id(esphome_tesla_ble_status).state;'
     on_state:
       then:
@@ -149,12 +157,8 @@ sensor:
     update_interval: 10s 
     on_value:
       then:
-        - lvgl.label.update:
-            id: charge_level_label
-            text: !lambda 'static char buf[10]; if(isnan(x)) return "-- %"; sprintf(buf, "%.0f %%", x); return buf;'
-        - lvgl.arc.update:
-            id: charge_level_arc
-            value: !lambda "return x;"
+        - lvgl.label.update: { id: charge_level_label, text: !lambda 'static char buf[10]; if(isnan(x)) return "-- %"; sprintf(buf, "%.0f %%", x); return buf;' }
+        - lvgl.arc.update: { id: charge_level_arc, value: !lambda "return x;" }
 
   - platform: template
     id: ui_amps_monitor
@@ -162,12 +166,7 @@ sensor:
     update_interval: 10s
     on_value:
       then:
-        - lvgl.label.update:
-            id: amps_value_label # Ajouté pour le label settings si besoin
-            text: !lambda 'static char buf[10]; if(isnan(x)) return "-- A"; sprintf(buf, "%.0f A", x); return buf;'
-        - lvgl.slider.update:
-            id: amps_slider
-            value: !lambda "return x;"
+        - lvgl.slider.update: { id: amps_slider, value: !lambda "return x;" }
 
 # --- HARDWARE ---
 output:
@@ -233,13 +232,14 @@ image:
   - { file: "images/bluetouth/pas-de-bluetouth.jpg", id: img_ble_none, type: RGB565 }
   - { file: "images/bluetouth/bluetouth-75-100.jpg", id: img_ble_full, type: RGB565 }
 
-# --- ENTITÉS DE CONFIGURATION ---
+# --- CONFIGURATION ENTITIES ---
 number:
   - platform: template
     name: "Screen GTW backlight"
     id: screen_brightness_config
     min_value: 55
     max_value: 100
+    step: 1
     initial_value: 80
     optimistic: true
     restore_value: true
@@ -253,6 +253,7 @@ number:
     id: screen_timeout_config
     min_value: 15
     max_value: 3600
+    step: 1
     initial_value: 60
     optimistic: true
     restore_value: true
@@ -292,7 +293,6 @@ lvgl:
       widgets:
         - image: { id: vehicle_image_widget, src: img_unplugged, align: CENTER, zoom: 0.75 }
         
-        # Arc Limite Charge (Interactif)
         - arc:
             id: charge_limit_arc
             align: CENTER
@@ -311,7 +311,6 @@ lvgl:
                       entity_id: number.${device_name}_charge_limit
                       value: !lambda "return to_string((int)x);"
 
-        # Arc Niveau Charge (Visuel)
         - arc:
             id: charge_level_arc
             align: CENTER
@@ -324,7 +323,6 @@ lvgl:
             indicator: { arc_color: 0x2ECC71, arc_width: 13 }
             adjustable: false
 
-        # Slider Ampérage
         - slider:
             id: amps_slider
             width: 20
