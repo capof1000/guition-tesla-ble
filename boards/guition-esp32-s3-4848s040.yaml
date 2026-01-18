@@ -45,7 +45,7 @@ light:
     output: backlight_output
     restore_mode: ALWAYS_ON
     default_transition_length: 1s
-    entity_category: Board
+    entity_category: config
 
 spi:
   - id: lcd_spi
