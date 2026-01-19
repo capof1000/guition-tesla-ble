@@ -155,8 +155,6 @@ script:
   #        // Appel de la méthode de reconnexion sur le pointeur global ESPHome
   #        esphome::wifi::global_wifi_component->retry_connect();
 
-
-
 esphome:
   #name: ${device_name}
   #friendly_name: ${friendly_name}
