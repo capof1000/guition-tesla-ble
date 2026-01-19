@@ -98,6 +98,9 @@ touchscreen:
   - platform: gt911
     id: tft_touch
     display: tft_display
+    on_touch:
+      - script.execute: screen_timeout_timer
+
 #    transform:     #uncomment for placement with down-facing USB socket
 #      swap_xy: true
 #      mirror_x: true
