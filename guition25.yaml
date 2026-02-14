@@ -1,0 +1,826 @@
+#b1 SI esp crash, il redemarre mais l'ecran reste noir, seule solution le rebrancher
+#B2 activer knob sur l'aarc central
+#b3 deplace ble icone vers la droite, pour meilleur aspect visuel
+#b4 affichier la puissance sous le slider
+#b5 display wifi signal in parameter
+#b6 fix caractere dans luminosit{é}
+#b7 display ble signal in parameter
+#b8 display uptime in parameter
+#b9 id: tesla_amps_raw en direct
+#b10 #on paase l'arc de limite en direct
+#b11 #Anti-jittler
+#b12 # coupure wifi , Request timed out.
+#b13 # l'ecran ne sort pas de veille
+#b14 # icone wifi dynamique
+#b15 # icone bluetooth dynamique -> reboot lors de sortie de veille
+#b16 # mise a jour de l'image principale
+#b17 # superposition du bouton sur l'image centrale, pour activer/deasctiver la charge.
+#b18 # slider pour afficher l'amperage de charge
+#b19 # fix TPMS
+#b20 # mode de fonctionnenet : manuel , smart solaire, rapide
+#b21 # suavegarder le mode de charge en cas de reboot.
+
+substitutions:
+  friendly_name: Capof Gateway 24
+  device_name: "guition-esp32-s3-4848s040"
+  device_description: Tesla BLE
+  ble_mac_address: !secret ble_mac_address
+  tesla_vin: !secret tesla_vin
+  charging_amps_max: "32"
+# The following shows the default board and variant settings. Uncomment and change them if they are not appropriate for your board:
+  #board: "esp32dev"
+  #variant: "ESP32"
+  tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble@repair" #b19
+  BLE_library: "https://github.com/PedroKTFC/tesla-ble.git#repair"   #b19
+
+api:
+  encryption:
+    key: !secret api_encryption_key # use "key: !secret your_secret_key_name" for greater security
+
+packages: #b19
+  remote_package_files:
+    url: https://github.com/PedroKTFC/esphome-tesla-ble/
+    path: packages
+    files: [base.yml, common.yml, project.yml, client.yml]
+    ref: repair #b19
+    refresh: 0d
+#packages:
+#  base:  github://PedroKTFC/esphome-tesla-ble/packages/base.yml
+#  common: github://PedroKTFC/esphome-tesla-ble/packages/common.yml
+#  project: github://PedroKTFC/esphome-tesla-ble/packages/project.yml
+#  client: github://PedroKTFC/esphome-tesla-ble/packages/client.yml
+  board: github://capof1000/guition-tesla-ble/boards/guition-esp32-s3-4848s040.yaml
+  # listener: github://PedroKTFC/esphome-tesla-ble/packages/listener.yml # Uncomment this to scan find your VIN BLE MAC address
+
+  
+
+# The following shows how to change the name of a sensor and how to change any of the parameters.
+# tesla_ble_vehicle: # THIS LINE MUST BE UNCOMMENTED IF ANY OF THE CHANGES BELOW ARE WANTED
+
+# You can change any sensor name in Home Assistant. However you can also change them here if it is more convenient for you.
+# For a list of all sensors etc, see the file client.yml in the packages directory.
+#  odometer: # miles by default, edit the entity in home assistant if you need km
+#    name: "Odometro" # Rename if desired
+# End of renaming
+
+# At the time of writing, these are set to the default values. If you require a different value, uncomment and edit the value
+#  update_interval: 10s # Base polling interval, used for VCSEC sensors
+#  post_wake_poll_time: 300 # How long to poll for data after car awakes at poll_data_period speed (s)
+#  poll_data_period: 60 # Polling interval after awakening during post_wake_poll_time interval (s)
+#  poll_charging_period: 10 # Period to poll for data when charging (s)
+#  poll_asleep_period: 60 # Period to poll for data when asleep (s)
+#  ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknown (s)
+#  fast_poll_if_unlocked: 1 # if != 0, fast polls are enabled when unlocked
+
+image:
+  - { file: "images/charger_unplugged.jpg", id: img_unplugged, type: RGB565 }
+  - { file: "images/charger_plugged.jpg", id: img_plugged, type: RGB565 }
+  - { file: "images/charger_charging.jpg", id: img_charging, type: RGB565 }
+  - { file: "images/parametres.jpg", id: img_params, type: RGB565 }
+    # WIFI
+  - { file: "images/wifi/pas-de-wifi.jpg", id: img_wifi_none, type: RGB565 }
+  - { file: "images/wifi/signal-wi-fi-0-25.jpg", id: img_wifi_0_25, type: RGB565 }
+  - { file: "images/wifi/signal-wi-fi-25-50.jpg", id: img_wifi_25_50, type: RGB565 }
+  - { file: "images/wifi/signal-wi-fi-50-75.jpg", id: img_wifi_50_75, type: RGB565 }
+  - { file: "images/wifi/signal-wi-fi-75-100.jpg", id: img_wifi_75_100, type: RGB565 }
+     # BLuetooth
+  - { file: "images/bluetouth/pas-de-bluetouth.jpg", id: img_ble_none, type: RGB565 }
+  - { file: "images/bluetouth/bluetouth-0-25.jpg", id: img_ble_0_25, type: RGB565 }
+  - { file: "images/bluetouth/bluetouth-25-50.jpg", id: img_ble_25_50, type: RGB565 }
+  - { file: "images/bluetouth/bluetouth-50-75.jpg", id: img_ble_50_75, type: RGB565 }
+  - { file: "images/bluetouth/bluetouth-75-100.jpg", id: img_ble_75_100, type: RGB565 }
+
+# --- CONFIGURATION ENTITIES ---
+number:
+  - platform: template
+    name: "Screen GTW backlight"
+    id: screen_brightness_config
+    min_value: 55
+    max_value: 100
+    step: 1
+    initial_value: 80
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      then:
+        - light.control: { id: display_backlight, brightness: !lambda "return x / 100.0;" }
+
+  - platform: template
+    name: "Screen GTW delay"
+    id: screen_timeout_config
+    min_value: 15
+    max_value: 3600
+    step: 1
+    initial_value: 60
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: delay_value_label
+            text: !lambda 'static char buf[20]; sprintf(buf, "%.0f s", x); return buf;'
+        - script.execute: screen_timeout_timer
+
+select:
+  - platform: template #b20 # mode de chargement
+    id: mode_charge
+    name: "Mode Charge Tesla"
+    optimistic: true
+    options:
+      - "manuel"
+      - "smart_solaire"
+      - "force"
+    #initial_option: "manuel" # to be keep ?
+    on_value:
+      then:
+        - script.execute: update_mode_buttons
+
+
+# On complète la configuration de Pedro pour mettre à jour l'écran
+tesla_ble_vehicle:
+  charge_state:
+    id: charge_state # On cible l'ID existant dans le package
+    on_value:
+      then:
+        - lvgl.label.update: #mise a jour dans la barre superieure 
+            id: charge_level_label 
+            text: !lambda 'static char buf[10]; if(isnan(x)) return "-- %"; sprintf(buf, "%.0f %%", x); return buf;'
+        - lvgl.arc.update: #mise a jour de l'arc
+            id: charge_level_arc
+            value: !lambda "return x;" 
+
+  max_soc: #limite de charge
+    id: max_soc
+    on_value:
+      then:
+        - if:
+            condition: { lambda: 'return !isnan(x);' }
+            then:
+              - lvgl.label.update: #mise a jour dans la barre superieure 
+                  id: charge_limit_label 
+                  text: !lambda 'static char buf[32]; if(isnan(x)) return "-- %"; sprintf(buf, "Limite de la recharge %.0f %%", x); return buf;'
+              - lvgl.arc.update: #mise a jour de l'arc
+                  id: charge_limit_arc
+                  value: !lambda "return x;"
+
+  charging_state:
+    id: charging_state
+    on_value:
+      then:
+        - script.execute: update_vehicle_image
+        - lvgl.label.update:
+            id: charging_label
+            text: !lambda |-
+              if (x.empty()) {
+                return std::string("");
+              }
+              return x;
+    
+  #charge_current: #b18
+  #charging_amps:
+    #id: "charge_current"
+  #  id: charging_amps
+  #  on_value:
+  #    then:
+  #      - if:
+  #          condition: { lambda: 'return !isnan(x);' }
+  #          then:
+  #            - lvgl.slider.update: #mise a jour du slider
+  #                id: amps_slider
+  #                value: !lambda "return x;"
+  #            - lvgl.label.update: #mise a jour dans la barre superieure 
+  #                id: charge_current_label 
+  #                text: !lambda 'static char buf[10]; if(isnan(x)) return "-- %"; sprintf(buf, "%.0f %%", x); return buf;'
+  max_amps: #b18
+    id: max_amps
+    on_value:
+      then:
+        - lambda: |-
+            if (isnan(x)) return;
+
+            static int last = -1;
+            int v = (int)x;
+            if (v == last) return;
+            last = v;
+
+        - lvgl.slider.update:
+            id: amps_slider
+            value: !lambda "return (int)x;"
+
+        - lvgl.label.update:
+            id: charge_current_label
+            text: !lambda |-
+              static char buf[12];
+              snprintf(buf, sizeof(buf), "%d A", (int)x);
+              return buf;
+
+
+
+font:
+  - file: { type: gfonts, family: Roboto }
+    id: font_main
+    size: 24
+    glyphs: ' !"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°éèàçêëîïôûù'  #b6
+
+
+
+# --- SCRIPTS ---
+script:
+  - id: update_vehicle_image
+    then:
+      - lvgl.image.update:
+          id: vehicle_image_widget
+          src: !lambda |-
+            if (id(charging_state).state == "Charging") return img_charging;
+            if (id(is_charge_flap_open).state) return img_plugged;
+            return img_unplugged;
+
+  - id: screen_timeout_timer
+    mode: restart
+    then:
+      - lvgl.resume: 
+      - script.execute: update_wifi_icon #b14
+      #- script.execute: update_ble_icon #b15
+      - light.turn_on: 
+          id: display_backlight
+          brightness: !lambda "return id(screen_brightness_config).state / 100.0;"
+      - delay: !lambda "return id(screen_timeout_config).state * 1000;"
+      - light.turn_off: 
+          id: display_backlight
+          transition_length: 2s
+      - lvgl.pause: 
+
+  - id: debounce_tesla_limit # b11 #Anti-jittler
+    mode: restart
+    parameters:
+      value: float
+    then:
+      - delay: 500ms
+      - lambda: |-
+          id(tesla_ble_vehicle_id).sendCarServerVehicleActionMessage(SET_CHARGING_LIMIT, (int)value);
+
+  - id: update_wifi_icon #b14
+    then:
+      - lvgl.image.update:
+          id: wifi_icon_widget
+          src: !lambda |-
+            if (!id(esphome_tesla_ble_wifi_signal).has_state())
+              return img_wifi_none;
+            float rssi = id(esphome_tesla_ble_wifi_signal).state;
+            if (rssi <= -80) return img_wifi_0_25;
+            if (rssi <= -70) return img_wifi_25_50;
+            if (rssi <= -60) return img_wifi_50_75;
+            return img_wifi_75_100;
+
+  - id: update_ble_icon #b15
+    then:
+      - lvgl.image.update:
+          id: ble_icon_widget
+          src: !lambda |-
+            if (!id(ble_signal).has_state())
+              return img_ble_none;
+            float rssi = id(ble_signal).state;
+            if (rssi <= -80) return img_ble_0_25;
+            if (rssi <= -70) return img_ble_25_50;
+            if (rssi <= -60) return img_ble_50_75;
+            return img_ble_75_100;
+
+  - id: update_mode_buttons #b20
+    mode: single
+    then:
+      - lambda: |- 
+          std::string mode = id(mode_charge).current_option();
+
+          lv_color_t active_color = lv_color_hex(0x00FF00);
+          lv_color_t inactive_color = lv_color_hex(0x333333);
+
+          if (mode == "manuel") {
+            lv_obj_set_style_bg_color(id(btn_manuel), active_color, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(id(btn_solaire), inactive_color, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(id(btn_force), inactive_color, LV_PART_MAIN);
+          } else if (mode == "smart_solaire") {
+            lv_obj_set_style_bg_color(id(btn_manuel), inactive_color, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(id(btn_solaire), active_color, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(id(btn_force), inactive_color, LV_PART_MAIN);
+          } else if (mode == "force") {
+            lv_obj_set_style_bg_color(id(btn_manuel), inactive_color, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(id(btn_solaire), inactive_color, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(id(btn_force), active_color, LV_PART_MAIN);
+          }
+
+
+  
+  #- id: restart_wifi_only #b12
+  #  then:
+  #    - logger.log: "Relance manuelle du Wi-Fi..."
+  #    - lambda: |-
+  #        // Appel de la déconnexion native ESP-IDF
+  #        esp_wifi_disconnect();
+  #        // Appel de la méthode de reconnexion sur le pointeur global ESPHome
+  #        esphome::wifi::global_wifi_component->retry_connect();
+
+esphome:
+  #name: ${device_name}
+  #friendly_name: ${friendly_name}
+  #platformio_options:
+  #  build_flags:
+  #    - -DCONFIG_ARDUINO_LOOP_STACK_SIZE=32768
+  #    - -DCONFIG_BT_BLE_DYNAMIC_ENV_MEMORY=1
+  
+  on_boot:
+    #priority: -100
+    priority: 600 # Priorité haute pour agir AVANT le reste . doit empecher l'ecran noir apres crash b1
+    then:
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100% # On force l'allumage immédiat
+      - script.execute: screen_timeout_timer
+
+lvgl:
+  displays: tft_display
+  buffer_size: 10%
+  on_all_events: #b13 # Ajout du bloc ci-dessous pour réveiller l'écran au toucher
+    - then:
+        - script.execute: screen_timeout_timer
+  
+  pages:
+    - id: main_page
+      widgets:
+        
+
+
+        #Arc de limite
+        - arc:
+            id: charge_limit_arc
+            align: CENTER
+            width: 320
+            height: 320
+            start_angle: 150
+            end_angle: 30
+            arc_width: 12
+            indicator: { arc_color: 0x00AEEF, arc_width: 12 }
+            #knob: #b2#
+            #  bg_color: 0xFFFFFF
+            #  radius: 5
+            adjustable: true
+            on_release:
+              then:
+                - lambda: |-
+                    int var_x = lv_arc_get_value(id(charge_limit_arc));
+                    id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_LIMIT, var_x);
+
+
+
+
+      #Amperage 
+        - button:
+            id: more_amps_button
+            align: RIGHT_MID
+            x: -10
+            y: -150
+            width: 35
+            height: 35
+            bg_opa: 0%  # Fond transparent pour ne voir que l'image
+            border_opa: 0%  # Pas de bordure
+            text: "+"
+            text_font: font_main
+            text_color: 0x888888
+            on_click:
+              then:
+                - lvgl.slider.update:
+                    id: amps_slider
+                    value: !lambda |-
+                      // 1. Calcul de la nouvelle valeur
+                      int val = lv_slider_get_value(id(amps_slider));
+                      int new_val = (val < 32) ? val + 1 : val;
+                      // 2. Envoi direct à la voiture (comme le code de Pedro)
+                      id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_AMPS, new_val);
+                      // 3. On retourne la valeur pour mettre à jour l'affichage du slider
+                      return new_val;
+
+        - button:
+            id: less_amps_button
+            align: RIGHT_MID
+            x: -10
+            y: 160
+            width: 35
+            height: 35
+            bg_opa: 0%  # Fond transparent pour ne voir que l'image
+            border_opa: 0%  # Pas de bordure
+            text: "-"
+            text_font: font_main
+            text_color: 0x888888
+            on_click:
+              then:
+                - lvgl.slider.update:
+                    id: amps_slider
+                    value: !lambda |-
+                      // 1. Calcul de la nouvelle valeur
+                      int val = lv_slider_get_value(id(amps_slider));
+                      int new_val = (val > 5) ? val - 1 : val;
+                      // 2. Envoi direct à la voiture (comme le code de Pedro)
+                      id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_AMPS, new_val);
+                      // 3. On retourne la valeur pour mettre à jour l'affichage du slider
+                      return new_val;
+                
+        # SLIDER VERTICAL AMPERAGE (DROITE) # b18
+        - slider:
+            id: amps_slider
+            width: 20
+            height: 250
+            align: RIGHT_MID
+            x: -20 #-45
+            min_value: 0
+            max_value: 32
+            bg_color: 0x333333
+            indicator:
+              bg_color: 0x2ECC71
+            knob:
+              bg_color: 0xFFFFFF
+              radius: 5
+            #value: !lambda "return (id(tesla_charge_current).has_state()) ? id(tesla_charge_current).state : 16;"
+            on_value:
+              then:
+                - lvgl.label.update:
+                    id: charge_current_label
+                    text: !lambda |-
+                      static const int base_y = 125;   // position initiale
+                      static const int step = 8;      // pas en pixels par unité
+                      lv_obj_set_y(id(charge_current_label), base_y - (step * (int)x));
+                      static char buf[12];
+                      snprintf(buf, sizeof(buf), "%d A", (int)x);
+                      return buf;
+
+        - label: 
+            id: charge_current_label
+            align: RIGHT_MID
+            x: -15 #-40
+            text: "-- %"
+            text_font: font_main
+            text_color: 0x888888
+                              
+        - label: 
+            id: charge_limit_label
+            align: CENTER
+            y: 140
+            text: "-- %"
+            text_font: font_main
+            text_color: 0x888888
+            
+        - label: 
+            id: charging_label
+            align: CENTER
+            y: 110
+            #text: ""
+            text_font: font_main
+            text_color: 0x888888
+                
+
+        #Arc de charge
+        - arc:
+            id: charge_level_arc
+            align: CENTER
+            width: 320
+            height: 320
+            start_angle: 150
+            end_angle: 30
+            arc_width: 12
+            bg_opa: 0%
+            adjustable: false
+            indicator: { arc_color: 0x2ECC71, arc_width: 13 }
+                 
+        # Image centrale - transformée en bouton -superposition #b17
+        #Image centrale
+        - image: { id: vehicle_image_widget, src: img_unplugged, align: CENTER, zoom: 0.75 }
+        - button:
+            id: charge_toggle_button
+            align: CENTER
+            width: 240
+            height: 133
+            bg_opa: 0%  # Fond transparent pour ne voir que l'image
+            border_opa: 00%  # Pas de bordure
+            on_click:
+              then:
+                - switch.toggle: sw_charger  # Bascule l'état du chargeur
+        
+
+
+
+
+        #Barre superieure
+        - obj:
+            height: 60
+            width: 100%
+            align: TOP_MID
+            bg_opa: 0%
+            widgets:
+              - button:
+                  width: 60
+                  height: 50
+                  align: LEFT_MID
+                  x: 10
+                  #on_click: { then: [ lvgl.page.show: settings_page ] }
+                  on_click:
+                    then:
+                      # 1. Mise à jour du slider de la luminosite 
+                      - lvgl.slider.update:
+                          id: brightness_slider  # Il faut ajouter un ID au slider
+                          value: !lambda |-
+                            return id(screen_brightness_config).state;        
+                      # 2. Mise à jour tu slider timeout
+                      - lvgl.slider.update:
+                          id: timeout_slider  # Il faut ajouter un ID au slider
+                          value: !lambda |-
+                            return id(screen_timeout_config).state;
+                      # 3. Mise à jour du label de signal WiFi
+                      - lvgl.label.update:
+                          id: wifi_signal_label
+                          text: !lambda |-
+                            if (id(esphome_tesla_ble_wifi_signal).has_state()) {
+                              return str_sprintf("%.0f dBm", id(esphome_tesla_ble_wifi_signal).state);
+                            } else {
+                              return "--";
+                            }
+                      # 4. Mise à jour du label de signal BLE
+                      - lvgl.label.update:
+                          id: ble_signal_label
+                          text: !lambda |-
+                            if (id(ble_signal).has_state()) {
+                              return str_sprintf("%.0f dBm", id(ble_signal).state);
+                            } else {
+                              return "--";
+                            }  
+                      # 5. Mise à jour du label Uptimr
+                      - lvgl.label.update:
+                          id: uptime_label
+                          text: !lambda |-
+                            if (id(esphome_tesla_ble_uptime).has_state()) {
+                              int total_seconds = (int)id(esphome_tesla_ble_uptime).state;
+                              int days = total_seconds / 86400;
+                              int hours = (total_seconds % 86400) / 3600;
+                              int minutes = (total_seconds % 3600) / 60;
+                              
+                              if (days > 0) {
+                                return str_sprintf("%dj %dh %dm", days, hours, minutes);
+                              } else {
+                                return str_sprintf("%dh %dm", hours, minutes);
+                              }
+                            } else {
+                              return "Uptime: --";
+                            }
+                      # 6. On charge la page de parametres
+                      - lvgl.page.show: settings_page
+
+                  widgets: [ image: { src: img_params, align: CENTER } ]
+              
+              
+              - image: { id: wifi_icon_widget, src: img_wifi_none, align: RIGHT_MID, x: -90 }
+              - image: { id: ble_icon_widget, src: img_ble_none, align: RIGHT_MID, x: -145 } #b3
+              - label: { id: charge_level_label, align: RIGHT_MID, x: -15, text: "-- %", text_font: font_main }
+
+        # Barre inferieure
+        # Barre inférieure – boutons de mode de charge
+        - obj:
+            height: 60
+            width: 100%
+            align: BOTTOM_MID
+            bg_opa: 0%
+            widgets:
+              - button:
+                  id: btn_manuel
+                  width: 120
+                  height: 100%
+                  align: LEFT_MID
+                  on_click:
+                    then:
+                      - select.set:
+                          id: mode_charge
+                          option: "manuel"
+                  widgets:
+                    - label:
+                        id: label_manuel
+                        text: "Manuel"
+                        align: CENTER
+                        x: 0
+                        y: 0
+                        text_font: font_main
+                        text_color: 0xFFFFFF
+
+              - button:
+                  id: btn_solaire
+                  width: 120
+                  height: 100%
+                  align: CENTER
+                  on_click:
+                    then:
+                      - select.set:
+                          id: mode_charge
+                          option: "smart_solaire"
+                  widgets:
+                    - label:
+                        id: label_solaire
+                        text: "Solaire"
+                        align: CENTER
+                        x: 0
+                        y: 0
+                        text_font: font_main
+                        text_color: 0xFFFFFF
+
+              - button:
+                  id: btn_force
+                  width: 120
+                  height: 100%
+                  align: RIGHT_MID
+                  on_click:
+                    then:
+                      - select.set:
+                          id: mode_charge
+                          option: "force"
+                  widgets:
+                    - label:
+                        id: label_force
+                        text: "Forcé"
+                        align: CENTER
+                        x: 0
+                        y: 0
+                        text_font: font_main
+                        text_color: 0xFFFFFF
+          
+    - id: settings_page
+      widgets:
+        - obj:
+            width: 100%
+            height: 100%
+            bg_color: 0x1A1A1A
+            widgets:
+              - button:
+                  align: TOP_RIGHT
+                  x: -15
+                  y: 10
+                  width: 50
+                  height: 40
+                  bg_color: 0xE53935
+                  on_click: { then: [ lvgl.page.show: main_page ] }
+                  widgets: [ label: { text: "X", text_font: font_main, align: CENTER } ]
+              # Luminosité
+              - label:
+                  text: "Luminosité"
+                  align: TOP_LEFT
+                  x: 30
+                  y: 60
+                  text_color: 0xFFFFFF
+                  text_font: font_main
+              - slider:
+                  id: brightness_slider
+                  align: TOP_MID
+                  y: 100
+                  width: 80%
+                  min_value: 55
+                  max_value: 100
+                  on_value: { then: [ number.set: { id: screen_brightness_config, value: !lambda "return x;" } ] }
+              # TimeOut
+              - label: #{ text: "Timeout", align: TOP_LEFT, x: 30, y: 150, text_color: 0xFFFFFF, text_font: font_main }
+                  text: "Timeout"
+                  align: TOP_LEFT
+                  x: 30
+                  y: 140
+                  text_color: 0xFFFFFF
+                  text_font: font_main
+              - label: 
+                  id: delay_value_label
+                  align: TOP_RIGHT
+                  x: -30
+                  y: 140
+                  text: "60 s"
+                  text_color: 0xFFFFFF
+                  text_font: font_main
+              - slider:
+                  id: timeout_slider
+                  align: TOP_MID
+                  y: 180
+                  width: 80%
+                  min_value: 15
+                  max_value: 3600
+                  value: !lambda |-
+                    return id(screen_timeout_config).state;
+                  on_value:
+                    then:
+                      - number.set:
+                          id: screen_timeout_config
+                          value: !lambda |-
+                            return x;
+                      - lvgl.label.update:
+                          id: delay_value_label
+                          text: !lambda |-
+                            return str_sprintf("%.0f s", x);
+
+              # Wifi #b5
+              - label: 
+                  text: "Wifi"
+                  align: TOP_LEFT
+                  x: 30
+                  y: 220
+                  text_color: 0xFFFFFF
+                  text_font: font_main
+              - label: 
+                  id: wifi_signal_label
+                  text_font: font_main
+                  text_color: 0xFFFFFF
+                  align: TOP_RIGHT
+                  x: -30
+                  y: 220
+                  text: !lambda |-
+                    if (id(esphome_tesla_ble_wifi_signal).has_state()) {
+                      return str_sprintf("%.0f dBm", id(esphome_tesla_ble_wifi_signal).state);
+                    } else {
+                      return "--";
+                    }
+
+              # BLE #b7
+              - label: 
+                  text: "BLE"
+                  align: TOP_LEFT
+                  x: 30
+                  y: 260
+                  text_color: 0xFFFFFF
+                  text_font: font_main
+              - label:
+                  id: ble_signal_label
+                  text_font: font_main
+                  text_color: 16777215
+                  align: TOP_RIGHT
+                  x: -30
+                  y: 260
+                  #text: !lambda |-
+                  #  // Correction : Ajout de id() autour de ble_signal
+                  #  if (id(ble_signal).has_state()) {
+                  #    return str_sprintf("%.0f dBm", id(ble_signal).state);
+                  #  } else {
+                  #    return "--";
+                  #  }
+
+              # Uptime #b8
+              - label: 
+                  text: "Uptime"
+                  align: TOP_LEFT
+                  x: 30
+                  y: 300
+                  text_color: 0xFFFFFF
+                  text_font: font_main
+              - label:
+                  id: uptime_label
+                  text_font: font_main
+                  text_color: 16777215
+                  align: LV_ALIGN_TOP_RIGHT
+                  x: -30
+                  y: 300
+                  text: !lambda |-
+                    if (id(esphome_tesla_ble_uptime).has_state()) {
+                      int total_seconds = (int)id(esphome_tesla_ble_uptime).state;
+                      int days = total_seconds / 86400;
+                      int hours = (total_seconds % 86400) / 3600;
+                      int minutes = (total_seconds % 3600) / 60;
+                      
+                      if (days > 0) {
+                        return str_sprintf("%dj %dh %dm", days, hours, minutes);
+                      } else {
+                        return str_sprintf("%dh %dm", hours, minutes);
+                      }
+                    } else {
+                      return "Uptime: --";
+                    }
+                
+                #b12 bouton reset wifi
+              #- button:
+              #    id: wifi_reset_btn
+              #    align: TOP_LEFT
+              #    x: 30
+              #    y: 340
+              #    width: 150
+              #    height: 50
+              #    widgets:
+              #      - label:
+              #          text: "Reset Wi-Fi"
+              #          align: LV_ALIGN_CENTER
+              #          text_font: font_main
+              #          text_color: 16777215
+              #    on_click:
+              #      then:
+              #        - script.execute: restart_wifi_only
+
+
+              #- dropdown: #log level
+              #    align: BOTTOM_MID
+              #    y: -20
+              #    width: 200
+              #    options: [NONE, ERROR, WARN, INFO, DEBUG, VERBOSE]
+              #    on_value:
+              #      then:
+              #        - select.set:
+              #            id: logger_level_config
+              #            option: !lambda |-
+              #              static const char* opts[] = {"NONE", "ERROR", "WARN", "INFO", "DEBUG", "VERBOSE"};
+              #              return opts[x];
+              
