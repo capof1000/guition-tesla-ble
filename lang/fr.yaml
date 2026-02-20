@@ -1,0 +1,23 @@
+substitutions:
+  # --- Boutons de mode ---
+  lang_btn_manual: "Manuel"
+  lang_btn_solar: "Solaire"
+  lang_btn_forced: "Forcé"
+
+  # --- Labels page principale ---
+  lang_charge_limit: "Limite de la recharge"
+
+  # --- Labels page paramètres ---
+  lang_luminosite: "Luminosité"
+  lang_timeout: "Timeout"
+  lang_wifi: "Wifi"
+  lang_ble: "BLE"
+  lang_uptime: "Uptime"
+
+  # --- Etats dynamiques venant du package Pedro ---
+  lang_charging: "En charge"
+  lang_stopped: "Arrêté"
+  lang_complete: "Charge complète"
+  lang_disconnected: "Déconnecté"
+  lang_no_power: "Pas d'alimentation"
+  lang_starting: "Démarrage"
