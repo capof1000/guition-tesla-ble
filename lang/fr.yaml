@@ -147,7 +147,7 @@ button:
 sensor:
   - id: !extend ble_signal
     name: "Signal BLE"
-    object_id: "ble_signal"
+    # object_id non supporté par le platform ble_client → entity_id géré par ESPHome
 
 # ============================================================
 # INTERRUPTEURS
