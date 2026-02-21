@@ -1,20 +1,25 @@
 # Fichier de langue française pour le projet guition-tesla-ble
-# Traduit les entités du package Pedro (esphome-tesla-ble) + les labels UI
-# Pour changer de langue : remplacer ce fichier par lang/en.yaml dans le bloc packages
-
+# 
+# IMPORTANT : ce fichier ne change QUE le "name" (nom affiché dans HA)
+# L'entity_id reste inchangé car Pedro définit déjà un "id:" fixe pour chaque entité
+# Cela permet une collaboration communautaire avec des entity_id stables entre les langues.
+#
+# Structure : on utilise !extend sur l'id de Pedro pour ne surcharger que le name
+#
 # ============================================================
 # ENTITÉS DU PACKAGE PEDRO - noms affichés dans Home Assistant
 # ============================================================
+
 tesla_ble_vehicle:
   is_asleep:
     name: "En veille"
   is_user_present:
     name: "Personne détectée"
   is_unlocked:
-    name: "Déverrouillée"
+    name: "Portes"
   is_charge_flap_open:
-    icon: mdi:ev-plug-ccs2
     name: "Trappe de charge"
+    icon: mdi:ev-plug-ccs2
   is_boot_open:
     name: "Coffre arrière"
   is_frunk_open:
@@ -28,7 +33,7 @@ tesla_ble_vehicle:
   odometer:
     name: "Kilométrage"
     filters:
-      - multiply: 1.609344 # en centièmes de mile, multiply par 0.01 déjà dans le package
+      - multiply: 0.01609344  # centièmes de miles → km
     unit_of_measurement: km
   charge_current:
     name: "Courant de charge"
@@ -41,7 +46,7 @@ tesla_ble_vehicle:
   charge_distance_added:
     name: "Autonomie ajoutée"
     filters:
-      - multiply: 1.609344 # miles
+      - multiply: 1.609344  # miles → km
     unit_of_measurement: km
   max_soc:
     name: "Limite de charge"
@@ -52,7 +57,7 @@ tesla_ble_vehicle:
   battery_range:
     name: "Autonomie"
     filters:
-      - multiply: 1.609344 # miles
+      - multiply: 1.609344  # miles → km
     unit_of_measurement: km
   charging_state:
     name: "État de charge"
@@ -68,10 +73,18 @@ tesla_ble_vehicle:
     name: "Température extérieure"
   windows_state:
     name: "Fenêtres"
+  tpms_pressure_fl:
+    name: "Pression pneu avant gauche"
+  tpms_pressure_fr:
+    name: "Pression pneu avant droit"
+  tpms_pressure_rl:
+    name: "Pression pneu arrière gauche"
+  tpms_pressure_rr:
+    name: "Pression pneu arrière droit"
 
 button:
   - id: !extend ble_pair
-    name: "Appairage BLE"
+    name: "Appairage clé BLE"
   - id: !extend btn_wake_up
     name: "Réveiller"
   - id: !extend btn_flash_light
@@ -106,6 +119,8 @@ switch:
     name: "Connexion BLE"
   - id: !extend fast_poll_if_unlocked
     name: "Scrutation rapide si déverrouillée"
+  - id: !extend wake_on_boot
+    name: "Réveil au démarrage"
 
 lock:
   - id: !extend lock_car
