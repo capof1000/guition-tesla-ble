@@ -1,156 +1,233 @@
 # Fichier de langue française pour le projet guition-tesla-ble
-# 
-# IMPORTANT : ce fichier ne change QUE le "name" (nom affiché dans HA)
-# L'entity_id reste inchangé car Pedro définit déjà un "id:" fixe pour chaque entité
-# Cela permet une collaboration communautaire avec des entity_id stables entre les langues.
 #
-# Structure : on utilise !extend sur l'id de Pedro pour ne surcharger que le name
+# PRINCIPE : object_id figé sur le nom anglais d'origine de Pedro
+#            → entity_id HA identique quelle que soit la langue chargée
+#            → compatible blueprint et dashboards communautaires
 #
-# ============================================================
-# ENTITÉS DU PACKAGE PEDRO - noms affichés dans Home Assistant
-# ============================================================
+# entity_id final = <device_name>_<object_id>
+# ex: sensor.capof_gateway_26_charge_level (jamais "niveau_de_charge")
 
+# ============================================================
+# ENTITÉS TESLA_BLE_VEHICLE
+# ============================================================
 tesla_ble_vehicle:
   is_asleep:
     name: "En veille"
+    object_id: "asleep"
   is_user_present:
     name: "Personne détectée"
+    object_id: "user_presence"
   is_unlocked:
     name: "Portes"
+    object_id: "doors"
   is_charge_flap_open:
     name: "Trappe de charge"
+    object_id: "charge_flap"
     icon: mdi:ev-plug-ccs2
   is_boot_open:
     name: "Coffre arrière"
+    object_id: "boot"
   is_frunk_open:
     name: "Coffre avant"
+    object_id: "frunk"
   shift_state:
     name: "Position sélecteur"
+    object_id: "shift_state"
   defrost_state:
     name: "Dégivrage"
+    object_id: "defrost_state"
   charge_state:
     name: "Niveau de charge"
+    object_id: "charge_level"
   odometer:
     name: "Kilométrage"
+    object_id: "odometer"
     filters:
       - multiply: 0.01609344  # centièmes de miles → km
     unit_of_measurement: km
   charge_current:
     name: "Courant de charge"
+    object_id: "charge_current"
   charge_voltage:
     name: "Tension de charge"
+    object_id: "charge_voltage"
   charge_power:
     name: "Puissance de charge"
+    object_id: "charge_power"
   charge_energy_added:
     name: "Énergie ajoutée"
+    object_id: "charge_energy_added"
   charge_distance_added:
     name: "Autonomie ajoutée"
+    object_id: "charge_distance_added"
     filters:
       - multiply: 1.609344  # miles → km
     unit_of_measurement: km
   max_soc:
     name: "Limite de charge"
+    object_id: "charge_limit"
   max_amps:
     name: "Limite courant de charge"
+    object_id: "current_limit"
   mins_to_limit:
     name: "Temps avant fin de charge"
+    object_id: "minutes_to_limit"
   battery_range:
     name: "Autonomie"
+    object_id: "range"
     filters:
       - multiply: 1.609344  # miles → km
     unit_of_measurement: km
   charging_state:
     name: "État de charge"
+    object_id: "charging_state"
   charge_port_latch_state:
     name: "Verrou trappe de charge"
+    object_id: "charge_port_latch_state"
   last_update:
     name: "Dernière mise à jour"
+    object_id: "last_update"
   is_climate_on:
     name: "Climatisation"
+    object_id: "climate"
   internal_temp:
     name: "Température intérieure"
+    object_id: "interior"
   external_temp:
     name: "Température extérieure"
+    object_id: "exterior"
   windows_state:
     name: "Fenêtres"
+    object_id: "windows"
   tpms_pressure_fl:
     name: "Pression pneu avant gauche"
+    object_id: "tyre_pressure_front_left"
   tpms_pressure_fr:
     name: "Pression pneu avant droit"
+    object_id: "tyre_pressure_front_right"
   tpms_pressure_rl:
     name: "Pression pneu arrière gauche"
+    object_id: "tyre_pressure_rear_left"
   tpms_pressure_rr:
     name: "Pression pneu arrière droit"
+    object_id: "tyre_pressure_rear_right"
 
+# ============================================================
+# BOUTONS
+# ============================================================
 button:
   - id: !extend ble_pair
     name: "Appairage clé BLE"
+    object_id: "pair_ble_key"
   - id: !extend btn_wake_up
     name: "Réveiller"
+    object_id: "wake_up"
   - id: !extend btn_flash_light
     name: "Flash phares"
+    object_id: "flash_light"
   - id: !extend btn_sound_horn
     name: "Klaxon"
+    object_id: "sound_horn"
   - id: !extend btn_unlock_charge_port
     name: "Déverrouiller trappe de charge"
+    object_id: "unlock_charge_port"
   - id: !extend btn_unlatch_driver_door
     name: "Ouvrir porte conducteur"
+    object_id: "unlatch_driver_door"
   - id: !extend btn_regenerate_key
     name: "Régénérer la clé"
+    object_id: "regenerate_key"
   - id: !extend btn_force_data_update
     name: "Forcer la mise à jour"
+    object_id: "force_data_update"
 
+# ============================================================
+# CAPTEURS
+# ============================================================
 sensor:
   - id: !extend ble_signal
     name: "Signal BLE"
+    object_id: "ble_signal"
 
+# ============================================================
+# INTERRUPTEURS
+# ============================================================
 switch:
   - id: !extend sw_charger
     name: "Charge"
+    object_id: "charger"
   - id: !extend sw_sentry_mode
     name: "Mode sentinelle"
+    object_id: "sentry_mode"
   - id: !extend sw_climate
     name: "Climatisation"
+    object_id: "climate"
   - id: !extend sw_steering_wheel_heat
     name: "Chauffage volant"
+    object_id: "steering_wheel_heat"
   - id: !extend sw_defrost_car
     name: "Dégivrage"
+    object_id: "defrost_car"
   - id: !extend sw_ble_connection
     name: "Connexion BLE"
+    object_id: "ble_connection"
   - id: !extend fast_poll_if_unlocked
     name: "Scrutation rapide si déverrouillée"
+    object_id: "fast_poll_if_unlocked"
   - id: !extend wake_on_boot
     name: "Réveil au démarrage"
+    object_id: "wake_on_boot"
 
+# ============================================================
+# VERROU
+# ============================================================
 lock:
   - id: !extend lock_car
     name: "Verrouillage voiture"
+    object_id: "lock_car"
 
+# ============================================================
+# VOLETS / OUVRANTS
+# ============================================================
 cover:
   - id: !extend cov_vent
     name: "Ventilation"
+    object_id: "vent"
   - id: !extend cov_charge_port
     name: "Trappe de charge"
+    object_id: "charge_port"
   - id: !extend cov_boot
     name: "Coffre arrière"
+    object_id: "boot"
   - id: !extend cov_frunk
     name: "Coffre avant"
+    object_id: "frunk"
 
+# ============================================================
+# NOMBRES
+# ============================================================
 number:
   - id: !extend charging_amps
     name: "Intensité de charge"
+    object_id: "charging_amps"
   - id: !extend charging_limit
     name: "Limite de charge"
+    object_id: "charging_limit"
   - id: !extend post_wake_poll_time
     name: "Scrutation après réveil"
+    object_id: "post_wake_poll_time"
   - id: !extend poll_data_period
     name: "Scrutation par défaut"
+    object_id: "poll_data_period"
   - id: !extend poll_asleep_period
     name: "Scrutation en veille"
+    object_id: "poll_asleep_period"
   - id: !extend poll_charging_period
     name: "Scrutation en charge"
+    object_id: "poll_charging_period"
   - id: !extend ble_disconnected_min_time
     name: "Délai déconnexion BLE"
+    object_id: "ble_disconnected_min_time"
 
 # ============================================================
 # SUBSTITUTIONS UI - labels affichés sur l'écran de la gateway
