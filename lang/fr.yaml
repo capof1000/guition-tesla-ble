@@ -1,5 +1,147 @@
+# Fichier de langue française pour le projet guition-tesla-ble
+# Traduit les entités du package Pedro (esphome-tesla-ble) + les labels UI
+# Pour changer de langue : remplacer ce fichier par lang/en.yaml dans le bloc packages
+
+# ============================================================
+# ENTITÉS DU PACKAGE PEDRO - noms affichés dans Home Assistant
+# ============================================================
+tesla_ble_vehicle:
+  is_asleep:
+    name: "En veille"
+  is_user_present:
+    name: "Personne détectée"
+  is_unlocked:
+    name: "Déverrouillée"
+  is_charge_flap_open:
+    icon: mdi:ev-plug-ccs2
+    name: "Trappe de charge"
+  is_boot_open:
+    name: "Coffre arrière"
+  is_frunk_open:
+    name: "Coffre avant"
+  shift_state:
+    name: "Position sélecteur"
+  defrost_state:
+    name: "Dégivrage"
+  charge_state:
+    name: "Niveau de charge"
+  odometer:
+    name: "Kilométrage"
+    filters:
+      - multiply: 1.609344 # en centièmes de mile, multiply par 0.01 déjà dans le package
+    unit_of_measurement: km
+  charge_current:
+    name: "Courant de charge"
+  charge_voltage:
+    name: "Tension de charge"
+  charge_power:
+    name: "Puissance de charge"
+  charge_energy_added:
+    name: "Énergie ajoutée"
+  charge_distance_added:
+    name: "Autonomie ajoutée"
+    filters:
+      - multiply: 1.609344 # miles
+    unit_of_measurement: km
+  max_soc:
+    name: "Limite de charge"
+  max_amps:
+    name: "Limite courant de charge"
+  mins_to_limit:
+    name: "Temps avant fin de charge"
+  battery_range:
+    name: "Autonomie"
+    filters:
+      - multiply: 1.609344 # miles
+    unit_of_measurement: km
+  charging_state:
+    name: "État de charge"
+  charge_port_latch_state:
+    name: "Verrou trappe de charge"
+  last_update:
+    name: "Dernière mise à jour"
+  is_climate_on:
+    name: "Climatisation"
+  internal_temp:
+    name: "Température intérieure"
+  external_temp:
+    name: "Température extérieure"
+  windows_state:
+    name: "Fenêtres"
+
+button:
+  - id: !extend ble_pair
+    name: "Appairage BLE"
+  - id: !extend btn_wake_up
+    name: "Réveiller"
+  - id: !extend btn_flash_light
+    name: "Flash phares"
+  - id: !extend btn_sound_horn
+    name: "Klaxon"
+  - id: !extend btn_unlock_charge_port
+    name: "Déverrouiller trappe de charge"
+  - id: !extend btn_unlatch_driver_door
+    name: "Ouvrir porte conducteur"
+  - id: !extend btn_regenerate_key
+    name: "Régénérer la clé"
+  - id: !extend btn_force_data_update
+    name: "Forcer la mise à jour"
+
+sensor:
+  - id: !extend ble_signal
+    name: "Signal BLE"
+
+switch:
+  - id: !extend sw_charger
+    name: "Charge"
+  - id: !extend sw_sentry_mode
+    name: "Mode sentinelle"
+  - id: !extend sw_climate
+    name: "Climatisation"
+  - id: !extend sw_steering_wheel_heat
+    name: "Chauffage volant"
+  - id: !extend sw_defrost_car
+    name: "Dégivrage"
+  - id: !extend sw_ble_connection
+    name: "Connexion BLE"
+  - id: !extend fast_poll_if_unlocked
+    name: "Scrutation rapide si déverrouillée"
+
+lock:
+  - id: !extend lock_car
+    name: "Verrouillage voiture"
+
+cover:
+  - id: !extend cov_vent
+    name: "Ventilation"
+  - id: !extend cov_charge_port
+    name: "Trappe de charge"
+  - id: !extend cov_boot
+    name: "Coffre arrière"
+  - id: !extend cov_frunk
+    name: "Coffre avant"
+
+number:
+  - id: !extend charging_amps
+    name: "Intensité de charge"
+  - id: !extend charging_limit
+    name: "Limite de charge"
+  - id: !extend post_wake_poll_time
+    name: "Scrutation après réveil"
+  - id: !extend poll_data_period
+    name: "Scrutation par défaut"
+  - id: !extend poll_asleep_period
+    name: "Scrutation en veille"
+  - id: !extend poll_charging_period
+    name: "Scrutation en charge"
+  - id: !extend ble_disconnected_min_time
+    name: "Délai déconnexion BLE"
+
+# ============================================================
+# SUBSTITUTIONS UI - labels affichés sur l'écran de la gateway
+# ============================================================
 substitutions:
-  # --- Boutons de mode ---
+  # --- Boutons de mode (valeurs techniques en anglais, labels en français) ---
   lang_btn_manual: "Manuel"
   lang_btn_solar: "Solaire"
   lang_btn_forced: "Forcé"
@@ -14,7 +156,7 @@ substitutions:
   lang_ble: "BLE"
   lang_uptime: "Uptime"
 
-  # --- Etats dynamiques venant du package Pedro ---
+  # --- États dynamiques venant du package Pedro (traduits via translate_charging_state) ---
   lang_charging: "En charge"
   lang_stopped: "Arrêté"
   lang_complete: "Charge complète"
