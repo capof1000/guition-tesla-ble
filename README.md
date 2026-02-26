@@ -1,275 +1,316 @@
-# ESPHome Tesla BLE
-
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![Last Commit][last-commit-shield]][commits]
-[![Platform][platform-shield]](https://github.com/esphome)
-
-This project [PedroKTFC/esphome-tesla-ble](https://github.com/PedroKTFC/esphome-tesla-ble) lets you use an ESP32 device to manage charging a Tesla vehicle over BLE. It is a fork of the [yoziru/esphome-tesla-ble](http://github.com/yoziru/esphome-tesla-ble) and uses a similar fork of the [yoziru/tesla-ble](http://github.com/yoziru/tesla-ble) library.
-
-| Controls | Sensors-1 | Sensors-2| Diagnostic |
-| - | - | - | - |
-| <img src="./docs/ha-controls.png"> | <img src="./docs/ha-sensors1.png"> | <img src="./docs/ha-sensors2.png"> | <img src="./docs/ha-diagnostic.png"> |
-
-## If it doesn't build
-
-I've put this section at the start because it seems people don't always read all the way to the end! So please read this section at least.
-> [!TIP]
-> **Always** start from the example yaml [`tesla-ble-example.yml`](./tesla-ble.example.yml). This has been tested many times and should work in almost every case.
-
-If the build fails, try the following (assuming you're building using the Home Assistant ESPHome builder):
-- In the ESPHome builder UI, clean the build files (as shown in the image below) and try installing again. If that doesn't work, try the next step.
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img width="35%" alt="image" src="https://github.com/user-attachments/assets/17b8a954-9af1-4c0b-9f64-bc0f5405f93c" />
-
-- Again in the ESPHome builder UI, click on the CLEAN ALL option and try installing again (as shown in the image below). If that still doesn't work, try the next step.
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img width="40%" alt="Untitled" src="https://github.com/user-attachments/assets/43ede5f6-4e42-4124-ae22-9024a29b1754" />
-
-- Uninstall and install the ESPHome add-on and try installing again.
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img width="25%" alt="image" src="https://github.com/user-attachments/assets/9700c133-4f2c-494a-8a42-4d4ab1d83942" />
-
-> [!TIP]
-> If these don't work, raise an issue and include a copy of your yaml and that part of your log that shows the error and I'll try to work out what's going wrong. (If you don't provide these, I'm afraid I'll simply ask you for them in the issue, I can't help without any information.)
-
-## Features
-
-### Controls
-
-These are implemented as switches, covers, buttons or numbers. Where indicated, these use the current sensor value for the control (but be aware that changing a value/state has a delay before it is reflected in the corresponding sensor - it takes time to send the messages to the vehicle to make the control and then read back the new value - it might look like the control has been rejected as the value reverts to the previous value; be patient!).
-
-- Open/close boot (cover)
-- Open/close charge port flap. Uses current sensor value (cover)
-- Turn on/off charger (switch)
-- Set charging amps (number)
-- Set charging limit (%).  Uses current sensor value (number)
-- Turn on/off climate. Uses current sensor value (switch)
-- Turn on/off defrost. Uses current sensor value (switch)
-- Flash lights (button)
-- Open frunk. Open only (cover)
-- Lock/unlock the car (lock)
-- Turn on/off sentry mode
-- Sound horn (button)
-- Turn on/off steering wheel heater (switch)
-- Unlatch driver door (button). This is disabled by default as it cannot be undone (eg if you're on holiday and, say your car is on your drive, if you accidentally action this button your driver door will unlatch and you can only re-close it physically!) 
-- Unlock charge port (button)
-- Vent/close windows (cover)
-- Wake up vehicle (button)
-
-### Vehicle Information Sensors
-
-There are two categories, those available even when asleep and those only when awake.
-
-- Always available:
-  - Asleep/awake
-  - Doors locked/unlocked
-  - User present/not present
-- Only when awake:
-  - Boot state open/closed
-  - Charge current (Amps)
-  - Charge distance added (miles)
-  - Charge energy added (kWh)
-  - Charging flap open/closed
-  - Charge level (%)
-  - Charge limit (%)
-  - Charge power (kW)
-  - Charge voltage (V)
-  - Charging state (eg Stopped, Charging, Complete)
-  - Climate on/off
-  - Current limit setting (Amps)
-  - Defrost state on/off
-  - Doors locked/unlocked
-  - Exterior temperature (°C)
-  - Frunk open/closed
-  - Interior temperature (°C)
-  - Last update (the last time a response was received from the Infotainment system, does not go "Unknown" once a response has been received)
-  - Minutes to limit (time to charge limit, multiples of 5 minutes)
-  - Odometer (miles)
-  - Range (miles)
-  - Shift state (eg Invalid, R, N, D)
-  - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
-  - Windows open/closed
-
-### Diagnostics
-
-These are the diagnostic button actions:
-
-- Force data update (wakes the car and reads all sensors)
-- Pair BLE key with vehicle
-- Regenerate key - will require repairing
-- Restart ESP board
+# 🚗 Guition ESP32-S3 — Tesla BLE Gateway
 
-There are also several self-explanatory sensors. The `BLE Status` sensor reports if the ESP board is connected to the car. By default this reports the car as disconnected if the car isn't seen for more than 5 seconds.
-> [!TIP]
-> There is a subsitution value `ble_presence_timeout` available to change this if you wish. For example, to change it to two  minutes use `  ble_presence_timeout: 120s`.
+> 🇫🇷 Français | [🇬🇧 English below](#-guition-esp32-s3--tesla-ble-gateway-1)
 
-### Configuration
+---
 
-There are five number and two switch actions that allow the dynamic update of the polling parameters (see below). These are disabled by default as I recommend they should be changed through yaml but they are useful for tuning/debugging your setup. If enabled, their setting takes priority over the yaml definition and they are preserved over a reboot. Note there is no equivalent to the `update_interval` parameter - this can still only be updated through yaml (and so a re-build). The following lists them with the equivalent polling parameter:
+Interface tactile pour contrôler la recharge d'une Tesla via Bluetooth Low Energy, basée sur l'écran **Guition ESP32-S3 4848S040** et **ESPHome**.
 
-- Post wake poll time = post_wake_poll_time (number)
-- Poll data period = poll_data_period (number)
-- Poll asleep period = poll_asleep_period (number)
-- Poll charging period = poll_charging_period (number)
-- BLE disconnected min time = ble_disconnected_min_time (number)
-- Fast poll if unlocked = fast_poll_if_unlocked (switch)
-- Wake on boot = wake_on_boot (switch)
+---
 
-## Hardware
+## ✨ Fonctionnalités
 
-- ESP32
-- [M5Stack Atom S3](https://docs.m5stack.com/en/core/AtomS3)
-- Alternatively, [M5Stack Atom S3-Lite](https://docs.m5stack.com/en/core/AtomS3%20Lite)
-- Alternatively, [M5Stack Nano C6](https://docs.m5stack.com/en/core/M5NanoC6)
-- USB-C cable to flash conveniently the M5Stack of your choice
-- [ESP32 C3 Super Mini](https://www.espboards.dev/esp32/esp32-c3-super-mini/)
+- **Affichage de l'état de charge** — niveau de batterie en temps réel (arc + pourcentage)
+- **Limite de recharge** — arc interactif ajustable directement sur l'écran
+- **Contrôle de l'ampérage** — slider vertical + boutons +/- (mode manuel uniquement)
+- **3 modes de charge** : Manuel / Solaire / Forcé
+- **Image dynamique du véhicule** — 3 états : débranché / branché / en charge
+- **Icônes WiFi et BLE dynamiques** — signal affiché par plage RSSI
+- **Page paramètres** — luminosité, timeout, signal WiFi/BLE, uptime
+- **Mise en veille automatique** — écran éteint après délai configurable
+- **Restauration du mode de charge** après reboot
 
-See below for build instructions for different board types.
+---
 
-## Usage
+## 🖥️ Matériel requis
 
-### Vehicle data polling
+| Composant | Détail |
+|-----------|--------|
+| Écran | Guition ESP32-S3 4848S040 (4,8" tactile) |
+| Connexion véhicule | Tesla (via BLE) |
+| Intégration | Home Assistant + ESPHome |
 
-There are several parameters that determine the polling activity which are described in the table below. The polling engine loops every `update_interval` seconds and, as a minimum, polls the car's VCSEC system. All other polls are based on this so that if any of the other parameters are not multiples of `update_interval`, the timings will be longer than expected. For example, if `update_interval` is set to 30s and `poll_data_period` is set to 75s, then the effective `poll_data_period` will be 90s.
+---
 
-| Name | Type | Default | Supported options | Description |
-| --- | --- | --- | --- | --- |
-|`update_interval`|number|10s|any interval|This is the base polling rate in seconds. **No other polls can happen faster than this even if you configure them shorter.** The base polling checks the overall status using the car’s VCSEC system (Vehicle Controller and Safety Electronics Controller, the central electronic control unit of a Tesla vehicle). It is polled at this rate and does not wake the car when asleep or prevent the car from going to sleep.|
-|`post_wake_poll_time`|number|300|>0 seconds|If the vehicle wakes up, it will be detected and the vehicle will be polled for data at a rate specified in `poll_data_period` for at least this number of seconds. After this, polling will fallback to a rate specified in `poll_asleep_period`. E.g. Suppose `post_wake_poll_time`=300, `poll_data_period`=60 and `poll_asleep_period`=120. In this case, when the care awakes, initially data will be polled each 60s for the first 300s. Then polling will continue each 120s.|
-|`poll_data_period`|number|60|>0 seconds|The vehicle is polled every this parameter seconds after becoming awake for a period of `post_wake_poll_time` seconds. Note the vehicle can stay awake if this is set too short.|
-|`poll_asleep_period`|number|60|>0 seconds|The vehicle is polled every this parameter seconds while being asleep and beyond the `post_wake_poll_time` after awakening. If set too short it can prevent the vehicle falling asleep.|
-|`poll_charging_period`|number|10|>0 seconds|While charging, the car can be polled more frequently if desired using this parameter.|
-|`ble_disconnected_min_time`|number|300|>0 seconds|Sensors will only be set to *Unknown* if the BLE connection remains disconnected for at least this time (useful if you have a slightly flakey BLE connection to your vehicle). Setting it to zero means sensors will be set to *Unknown* as soon as the BLE connection disconnects.|
-|`fast_poll_if_unlocked`|number|0|0, >0|Controls whether fast polls are enabled when unlocked. If the vehicle is unlocked (and `fast_poll_if_unlocked` > 0), it will be polled at `update_interval` until it is locked. This could be useful if you wish to quickly detect a change in the vehicle (for example, I use it to detect when it is put into gear so I can trigger an automation to open my electric gate). Set to 0 to disable, any value > 0 to enable.|
-|`wake_on_boot`|number|0|0, >0|Controls whether the car is woken when the board restarts. Set to 0 to not wake, any value > 0 to wake.|
+## 🔗 Utilisation avec le Blueprint Tesla SmartCharge
 
-Note that while a user is present in the car (recall this is a VCSEC status so is polled for even when the car is asleep), polling will occur at `update_interval` and all sensors updated.
+Ce projet atteint son **plein potentiel** lorsqu'il est couplé au blueprint **Tesla SmartCharge** :
 
-## Miles vs Km, bar vs psi etc
+👉 **[capof1000/Tesla-SmartCharge](https://github.com/capof1000/Tesla-SmartCharge)**
 
-By default the car reports distances in miles and pressures in bars, so this integration returns these units. In Home Assistant you can edit any sensor and select the preferred unit of measurement there.
+[![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/capof1000/Tesla-SmartCharge/refs/heads/main/Blueprint_TeslaSmartCharge.yaml)
 
-## Pre-requisites
+### Ce que le blueprint apporte
 
-**Recommended path**
-- Home Assistant [Add-On Esphome Device Builder](https://esphome.io/guides/getting_started_hassio#installing-esphome-device-builder)
+Le blueprint pilote intelligemment la charge Tesla en fonction de :
 
-**Alternative**
-- Python 3.10+
-- GNU Make
+- 🌞 La **production solaire** disponible
+- 🏠 La **consommation du logement**
+- 🔋 L'**état de charge (SOC)** du véhicule
+- ⚡ Les **contraintes électriques** de l'installation (délestage automatique prioritaire)
 
-## Finding the BLE MAC address of your vehicle
+### Modes disponibles
 
-**Recommended path**
+| Mode | Description |
+|------|-------------|
+| `manual` | Contrôle direct via l'écran (ampérage + start/stop) |
+| `solar` | Piloté par le blueprint selon la production solaire |
+| `forced` | Charge immédiate pilotée par le blueprint (avec sécurité délestage) |
 
-Use an appropriate BLE app on your phone (eg BLE Scanner) to scan for the BLE devices nearby (so be close to your car). You should see your car in the list of devices (its name will begin with an 'S') with the MAC address displayed.
-Copy and rename `secrets.yaml.example` to `secrets.yaml` and update it with your WiFi credentials (`wifi_ssid` and `wifi_password`) and vehicle VIN (`tesla_vin`) and BLE MAC adress (`ble_mac_address`).
+### Lien avec le Guition
 
-**Note the car's VIN is displayed in the windscreen, the Tesla app and (probably) your registration documents. In my case it begins with "LRW...". It is not the BLE beacon name you get when determining the BLE MAC address.**
+L'écran expose une entité `select` **Mode Charge Tesla** avec les valeurs `manual`, `solar`, `forced`, compatibles avec le blueprint v1.7. En mode `solar` ou `forced`, les boutons de contrôle manuel disparaissent de l'écran — c'est le blueprint qui prend la main.
 
-**Alternative**
+---
 
-Build the scanner in the [`ble-scanner.yml`](./ble-scanner.yml) file. Once built, it will start scanning and print out the MAC address of any Tesla vehicles found in the logs. Building does take some time.
+## 📦 Dépendances
 
-The following is the original method. I have never tried this and I do not maintain the associated file. I therefore do not recommend this but have left it here in case there are any people left who still use it.
+- **[esphome-tesla-ble (fork PedroKTFC)](https://github.com/PedroKTFC/esphome-tesla-ble/tree/repair)** — communication BLE Tesla
+- **[guition-tesla-ble board](https://github.com/capof1000/guition-tesla-ble)** — configuration matérielle de l'écran
 
-1. Copy and rename `secrets.yaml.example` to `secrets.yaml` and update it with your WiFi credentials (`wifi_ssid` and `wifi_password`) and vehicle VIN (`tesla_vin`).
-1. Enable the `tesla_ble_listener` package in `packages/base.yml` by uncommenting the `listener: !include listener.yml` line.
-1. Build and flash the firmware to your ESP32 device. See the 'Building and flashing ESP32 firmware' section below.
-1. Open the ESPHome logs in Home Assistant and wake it up. Watch for the "Found Tesla vehicle" message, which will contain the BLE MAC address of your vehicle.
-    > Note: The vehicle must be in range and awake for the BLE MAC address to be discovered. If the vehicle is not awake, open the Tesla app and run any command
-    ```log
-    [00:00:00][D][tesla_ble_listener:044]: Parsing device: [CC:BB:D1:E2:34:F0]: BLE Device name 1
-    [00:00:00][D][tesla_ble_listener:044]: Parsing device: [19:8A:BB:C3:D2:1F]: 
-    [00:00:00][D][tesla_ble_listener:044]: Parsing device: [19:8A:BB:C3:D2:1F]:
-    [00:00:00][D][tesla_ble_listener:044]: Parsing device: [F5:4E:3D:C2:1B:A0]: BLE Device name 2
-    [00:00:00][D][tesla_ble_listener:044]: Parsing device: [A0:B1:C2:D3:E4:F5]: S1a87a5a75f3df858C
-    [00:00:00][I][tesla_ble_listener:054]: Found Tesla vehicle | Name: S1a87a5a75f3df858C | MAC: A0:B1:C2:D3:E4:F5
-    ```
-1. Clean up your environment before the next step by disabling the `tesla_ble_listener` package in `packages/base.yml` and running
-    ```sh
-    make clean
-    ```
-## Building and flashing ESP32 firmware
+---
 
-### Recommended path
+## ⚙️ Installation
 
-For an example ESPHome dashboard, see [`tesla-ble-example.yml`](./tesla-ble.example.yml). Please always start from this. I strongly recommend building this using the ESPHome Device Builder add-on in Home Assistant as this makes building and re-building (eg for updates) much easier.
+### 1. Fichier `secrets.yaml`
 
-### Board types
+```yaml
+api_encryption_key: "VOTRE_CLE_API"
+ble_mac_address: "XX:XX:XX:XX:XX:XX"
+tesla_vin: "VOTRE_VIN"
+```
 
-Various board types have been shown to work with this project. Always start from [`tesla-ble-example.yml`](./tesla-ble.example.yml). Some boards require additional/changed yaml, please refer to the [`wiki`](https://github.com/PedroKTFC/esphome-tesla-ble/wiki/How-to-build-for-different-board-types).
+### 2. Flash initial
 
-The [`tesla-ble-example.yml`](./tesla-ble.example.yml) file is setup to be used with a standard ESP32 device.
+Pour le premier flash, utilisez l'outil web ESPHome via USB :
 
-### Alternative build method using make
+👉 [web.esphome.io](https://web.esphome.io) — flashez le fichier `firmware.factory.bin`
 
-The following are instructions if you use `make`. I have never used these so cannot vouch for their accuracy (as I said above, it's far easier to use the ESPHome Device Builder add-on in Home Assistant). I welcome any feedback on improving/correcting these instructions - please raise an issue for it.
+### 3. Mises à jour suivantes
 
-1. Connect your ESP32 device to your computer via USB
-1. Copy and rename `secrets.yaml.example` to `secrets.yaml` and update it with your WiFi credentials (`wifi_ssid` and `wifi_password`) and vehicle details (`ble_mac_address` and `tesla_vin`)
-1. Build the image with [ESPHome](https://esphome.io/guides/getting_started_command_line.html). Alternate boards are listed in the `boards/` directory.
+Les mises à jour s'effectuent en OTA via l'interface ESPHome.
 
-    ```sh
-    make compile BOARD=m5stack-nanoc6
-    ```
+---
 
-1. Upload/flash the firmware to the board.
+## 🔧 Configuration
 
-    ```sh
-    make upload BOARD=m5stack-nanoc6
-    ```
+| Entité | Description | Défaut |
+|--------|-------------|--------|
+| `Screen GTW backlight` | Luminosité (55–100%) | 80% |
+| `Screen GTW delay` | Timeout avant veille (15–3600s) | 60s |
+| `Mode Charge Tesla` | Mode actif | manual |
 
-1. After flashing, you can use the log command to monitor the logs from the device. The host suffix is the last part of the device name in the ESPHome dashboard (e.g. `5b2ac7`).
+---
 
-    ```sh
-    make logs HOST_SUFFIX=-5b2ac7
-    ```
+## 📱 Interface
 
-1. For updating your device, you can OTA update over local WiFi using the same host suffix:
+```
+┌─────────────────────────────────┐
+│ ⚙️           📶  🔵   87 %      │  ← Barre supérieure
+│                                 │
+│      Arc limite (bleu)          │
+│         Arc charge (vert)       │
+│      [ Image véhicule ]         │
+│                                 │
+│                        │ Slider │
+│                        │ Amps   │
+│ Manuel    Solaire    Forcé       │  ← Barre inférieure
+└─────────────────────────────────┘
+```
 
-    ```sh
-    make upload HOST_SUFFIX=-5b2ac7
-    ```
+---
 
-> Note: the make commands are just a wrapper around the `esphome` command. You can also use the `esphome` commands directly if you prefer (e.g. `esphome compile tesla-ble-m5stack-nanoc6.yml`)
+## 📝 Changelog
 
-## Adding the device to Home Assistant
+| Version | Changements |
+|---------|-------------|
+| b28 | Valeurs de mode en anglais pour compatibilité blueprint v1.7 |
+| b27 | Boutons +/- et toggle visibles uniquement en mode manuel |
+| b26 | Uniformisation du fond blanc |
+| b25 | Suppression des bordures sur l'image centrale |
+| b24 | Icône BLE : rafraîchissement par plage RSSI |
+| b22 | Fix scroll barres supérieure/inférieure |
+| b21 | Restauration du mode de charge après reboot |
+| b20 | Ajout des modes manuel / solaire / forcé |
+| b19 | Fix TPMS, migration vers fork repair |
+| b18 | Slider ampérage vertical |
+| b17 | Bouton start/stop superposé sur image centrale |
+| b15 | Icône BLE dynamique |
+| b14 | Icône WiFi dynamique |
+| b13 | Fix sortie de veille écran |
+| b11 | Anti-jitter sur l'arc de limite |
+| b1  | Fix crash ESP + écran noir |
 
-1. In Home Assistant, go to Settings > Devices & Services. If your device is discovered automatically, you can add it by clicking the "Configure" button by the discovered device. If not, click the "+ Add integration" button and select "ESPHome" as the integration and enter the IP address of your device.
-2. Enter the API encryption key from the `secrets.yaml` file when prompted.
-3. That's it! You should now see the device in Home Assistant and be able to control it.
+---
 
-## Pairing the BLE key with your vehicle
+## 🐛 Problèmes connus
 
-1. Make sure your ESP32 device is close to the car (check the "BLE Signal" sensor) and the BLE MAC address and VIN in `secrets.yaml` is correct. IT IS ESSENTIAL THESE ARE CORRECT - YOUR CAR WILL NOT PAIR OTHERWISE.
-1. Get into your vehicle
-1. In Home Assistant, go to Settings > Devices & Services > ESPHome, choose your Tesla BLE device and click "Pair BLE key"
-1. Tap your NFC card to your car's center console
-1. A prompt will appear on the screen of your car asking if you want to pair the key
-    > Note: if the popup does not appear, you may need to press "Pair BLE key" and tap your card again
+- En cas de crash ESP32, l'écran peut rester noir : débrancher/rebrancher l'alimentation.
 
-    <img src="./docs/vehicle-pair-request.png" width="500">
+---
 
-1. Hit confirm on the screen
-1. To verify the key was added, tap Controls > Locks, and you should see a new key named "Unknown device" in the list
-1. [optional] Rename your key to "ESPHome BLE" to make it easier to identify
+## 🙏 Crédits
 
-    <img src="./docs/vehicle-locks.png" width="500">
+- **[PedroKTFC](https://github.com/PedroKTFC/esphome-tesla-ble)** — librairie esphome-tesla-ble
+- **[ESPHome](https://esphome.io)** — framework
+- **[Home Assistant](https://www.home-assistant.io)** — plateforme domotique
 
-[commits-shield]: https://img.shields.io/github/commit-activity/y/PedroKTFC/esphome-tesla-ble
-[commits]: https://github.com/PedroKTFC/esphome-tesla-ble/commits/main
-[releases-shield]: https://img.shields.io/github/v/release/PedroKTFC/esphome-tesla-ble
-[releases]: https://github.com/Blackymas/PedroKTFC/esphome-tesla-ble
-[last-commit-shield]: https://img.shields.io/github/last-commit/PedroKTFC/esphome-tesla-ble
-[platform-shield]: https://img.shields.io/badge/platform-Home%20Assistant%20&%20ESPHome-blue
+---
+---
 
+# 🚗 Guition ESP32-S3 — Tesla BLE Gateway
 
+> [🇫🇷 Français ci-dessus](#-guition-esp32-s3--tesla-ble-gateway) | 🇬🇧 English
 
+---
 
+A touchscreen interface to control Tesla charging via Bluetooth Low Energy, built on the **Guition ESP32-S3 4848S040** display and **ESPHome**.
 
+---
 
+## ✨ Features
 
+- **Live charge state display** — battery level in real time (arc + percentage)
+- **Charge limit** — interactive adjustable arc directly on screen
+- **Amperage control** — vertical slider + +/- buttons (manual mode only)
+- **3 charge modes** : Manual / Solar / Forced
+- **Dynamic vehicle image** — 3 states: unplugged / plugged / charging
+- **Dynamic WiFi & BLE icons** — signal displayed by RSSI range
+- **Settings page** — brightness, timeout, WiFi/BLE signal, uptime
+- **Auto screen sleep** — screen turns off after configurable delay
+- **Charge mode restored** after reboot
 
+---
 
+## 🖥️ Required Hardware
+
+| Component | Details |
+|-----------|---------|
+| Display | Guition ESP32-S3 4848S040 (4.8" touchscreen) |
+| Vehicle connection | Tesla (via BLE) |
+| Integration | Home Assistant + ESPHome |
+
+---
+
+## 🔗 Use with the Tesla SmartCharge Blueprint
+
+This project reaches its **full potential** when paired with the **Tesla SmartCharge** blueprint:
+
+👉 **[capof1000/Tesla-SmartCharge](https://github.com/capof1000/Tesla-SmartCharge)**
+
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/capof1000/Tesla-SmartCharge/refs/heads/main/Blueprint_TeslaSmartCharge.yaml)
+
+### What the blueprint adds
+
+The blueprint intelligently manages Tesla charging based on:
+
+- 🌞 Available **solar production**
+- 🏠 **Home energy consumption**
+- 🔋 Vehicle **state of charge (SOC)**
+- ⚡ **Electrical constraints** (automatic load shedding — always takes priority)
+
+### Available modes
+
+| Mode | Description |
+|------|-------------|
+| `manual` | Direct control from the screen (amperage + start/stop) |
+| `solar` | Managed by the blueprint based on solar production |
+| `forced` | Immediate charging managed by the blueprint (with load-shedding safety) |
+
+### Integration with the Guition display
+
+The screen exposes a `select` entity **Mode Charge Tesla** with values `manual`, `solar`, `forced`, compatible with blueprint v1.7. In `solar` or `forced` mode, the manual control buttons are hidden on screen — the blueprint takes over.
+
+---
+
+## 📦 Dependencies
+
+- **[esphome-tesla-ble (PedroKTFC fork)](https://github.com/PedroKTFC/esphome-tesla-ble/tree/repair)** — Tesla BLE communication
+- **[guition-tesla-ble board](https://github.com/capof1000/guition-tesla-ble)** — hardware board configuration
+
+---
+
+## ⚙️ Installation
+
+### 1. `secrets.yaml` file
+
+```yaml
+api_encryption_key: "YOUR_API_KEY"
+ble_mac_address: "XX:XX:XX:XX:XX:XX"
+tesla_vin: "YOUR_VIN"
+```
+
+### 2. Initial flash
+
+For the first flash, use the ESPHome web tool via USB:
+
+👉 [web.esphome.io](https://web.esphome.io) — flash the `firmware.factory.bin` file
+
+### 3. Subsequent updates
+
+Updates are performed OTA via the ESPHome interface.
+
+---
+
+## 🔧 Configuration
+
+| Entity | Description | Default |
+|--------|-------------|---------|
+| `Screen GTW backlight` | Brightness (55–100%) | 80% |
+| `Screen GTW delay` | Sleep timeout (15–3600s) | 60s |
+| `Mode Charge Tesla` | Active mode | manual |
+
+---
+
+## 📱 Interface
+
+```
+┌─────────────────────────────────┐
+│ ⚙️           📶  🔵   87 %      │  ← Top bar
+│                                 │
+│      Charge limit arc (blue)    │
+│         Charge level arc (green)│
+│      [ Vehicle image ]          │
+│                                 │
+│                        │ Slider │
+│                        │ Amps   │
+│ Manual    Solar    Forced        │  ← Bottom bar
+└─────────────────────────────────┘
+```
+
+---
+
+## 📝 Changelog
+
+| Version | Changes |
+|---------|---------|
+| b28 | Mode values in English for blueprint v1.7 compatibility |
+| b27 | +/- buttons and toggle hidden in non-manual modes |
+| b26 | White background uniformization |
+| b25 | Border removed from central image |
+| b24 | BLE icon: refresh only on RSSI range change |
+| b22 | Fix scroll on top/bottom bars |
+| b21 | Charge mode restored after reboot |
+| b20 | Added manual / solar / forced modes |
+| b19 | Fix TPMS, migration to repair fork |
+| b18 | Vertical amperage slider |
+| b17 | Start/stop button overlaid on central image |
+| b15 | Dynamic BLE icon |
+| b14 | Dynamic WiFi icon |
+| b13 | Fix screen wake from sleep |
+| b11 | Anti-jitter on charge limit arc |
+| b1  | Fix ESP crash + black screen |
+
+---
+
+## 🐛 Known Issues
+
+- After an ESP32 crash, the screen may stay black: unplug and replug the power supply.
+
+---
+
+## 🙏 Credits
+
+- **[PedroKTFC](https://github.com/PedroKTFC/esphome-tesla-ble)** — esphome-tesla-ble library
+- **[ESPHome](https://esphome.io)** — framework
+- **[Home Assistant](https://www.home-assistant.io)** — home automation platform
