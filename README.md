@@ -250,21 +250,7 @@ Updates are performed OTA via the ESPHome interface.
 
 ## 📱 Interface
 
-```
-┌─────────────────────────────────┐
-│ ⚙️           📶  🔵   87 %      │  ← Top bar
-│                                 │
-│      Charge limit arc (blue)    │
-│         Charge level arc (green)│
-│      [ Vehicle image ]          │
-│                                 │
-│                        │ Slider │
-│                        │ Amps   │
-│ Manual    Solar    Forced        │  ← Bottom bar
-└─────────────────────────────────┘
-```
-
----
+![Screen1](/images/screen1.png)
 
 ## 📝 Changelog
 
@@ -300,4 +286,5 @@ Updates are performed OTA via the ESPHome interface.
 - **[PedroKTFC](https://github.com/PedroKTFC/esphome-tesla-ble)** — esphome-tesla-ble library
 - **[ESPHome](https://esphome.io)** — framework
 - **[Home Assistant](https://www.home-assistant.io)** — home automation platform
+
 
