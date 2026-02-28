@@ -10,8 +10,8 @@ esp32:
     type: esp-idf
 
 psram:
-  #mode: octal # sound to be agression around espohome v2026.2.1
-  mode: quad
+  #mode: octal # sound to be a regression around espohome v2026.2.2
+  mode: octal
   speed: 80MHz
 
 #switch:
